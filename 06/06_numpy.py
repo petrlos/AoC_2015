@@ -22,9 +22,8 @@ for line in lines:
                 gridTask2[row, column] += 1
             elif "off" in line:
                 gridTask1[row, column] = False
-                gridTask2[row, column] -= 1
-                if gridTask2[row, column] < 0:
-                    gridTask2[row, column] = 0
+                if gridTask2[row, column] > 0:
+                    gridTask2[row, column] -= 1
             elif "toggle" in line:
                 gridTask1[row, column] = not gridTask1[row, column]
                 gridTask2[row, column] += 2
