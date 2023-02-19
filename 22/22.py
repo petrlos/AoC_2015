@@ -3,6 +3,8 @@ import re
 from random import randint
 from copy import deepcopy
 
+#TODO: damaged, don't know why, not working, see version 22_2.py
+
 # MAIN
 regSpellName = re.compile(r"\w+")
 regNum = re.compile(r"\d+")
