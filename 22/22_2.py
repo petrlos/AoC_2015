@@ -42,11 +42,9 @@ class Game_state:
                 self.MP_consumed += atributes["cost"]
                 self.boss_HP -= atributes["dmg"]
                 self.mage_HP += atributes["heal"]
-                # print("  Mage casts: {0}, deals {1} dmg to Boss".format(spell_name, atributes["dmg"]))
             else:
                 active_spell_names = [spell[0] for spell in self.active_effects]
                 if spell_name not in active_spell_names:
-                    #print("  Player casts ", spell_name)
                     self.active_effects.append((spell_name,atributes["max_time"]))
                     self.mage_MP -= atributes["cost"]
                     self.MP_consumed += atributes["cost"]
@@ -58,13 +56,10 @@ class Game_state:
             timer -= 1
             if spell_name == "shield":
                 self.shield_on = True
-                #print("Shield activated, timer remaining:", timer)
             elif spell_name == "poison":
                 self.boss_HP -= spells[spell_name]["dmg"]
-                #print("Boss been hit for 3HP via poison, timer remaining:", timer)
             elif spell_name == "recharge":
                 self.mage_MP += spells[spell_name]["mana_recharge"]
-                #print("101MP recharged, timer remaining:", timer)
             if timer > 0:
                 new_active_effects.append((spell_name, timer))
         self.active_effects = deepcopy(new_active_effects)
@@ -80,7 +75,7 @@ def define_spells(lines):
         spells[spell_name] = dict(zip(parameters, numbers))
     return spells
 
-def mage_attacks_boss(game):
+def mage_attacks_boss(game, lvl=1):
     queue = deque([game])
 
     lowest_mana_consumed = 9999
@@ -89,6 +84,8 @@ def mage_attacks_boss(game):
         for spell_name, atributes in spells.items():
             current_state = deepcopy(start_state)
             #player turn - apply effects
+            if lvl == 2:
+                current_state.mage_HP = current_state.mage_HP - 1 #
             current_state.cast_effects()
             #player turn - cast spell
             current_state.add_spell_to_effects(spell_name)
@@ -101,6 +98,8 @@ def mage_attacks_boss(game):
                 continue
             # boss attack:
             boss_hit = current_state.boss_DMG - current_state.shield_bonus
+            if boss_hit < 1:
+                boss_hit = 1
             current_state.mage_HP -= boss_hit
             if current_state.mage_dead:  # mage dead
                 continue
@@ -115,4 +114,4 @@ with open("spells.txt") as file:
 spells = define_spells(lines)
 game_start = Game_state(50, 500, 51, 9) #mageHP, mageMP, bossHP, bossDMG
 
-print(mage_attacks_boss(game_start))
+print(mage_attacks_boss(game_start, 2))
