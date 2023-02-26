@@ -1,16 +1,20 @@
 # Advent of Code 2015: Day 22
 import re
-from queue import PriorityQueue
+from copy import deepcopy
+from collections import deque
+from datetime import datetime
+time_start = datetime.now()
+
 
 class Game_state:
-    def __init__(self, mage_HP, mage_MP, boss_HP, boss_DMG, active_effects):
+    def __init__(self, mage_HP, mage_MP, boss_HP, boss_DMG):
         self.mage_HP = mage_HP
         self.mage_MP = mage_MP
         self.boss_HP = boss_HP
         self.boss_DMG = boss_DMG
         self.shield_on = False
         self.MP_consumed = 0
-        self.active_effects = active_effects
+        self.active_effects = []
         self.spells_casted = []
 
     def __str__(self):
@@ -25,6 +29,8 @@ class Game_state:
 
     @property
     def mage_dead(self):
+        if self.mage_HP <= 0:
+            self.mage_HP = -100
         return (self.mage_HP <= 0) or (self.mage_MP < 53)
 
     @property
@@ -42,6 +48,7 @@ class Game_state:
 
     def mage_turn(self, spell_name):
         self.cast_effects()
+        self.spells_casted.append("{0} {1}".format(spell_name,spells[spell_name]["cost"]))
         self.mage_MP -= spells[spell_name]["cost"]
         self.MP_consumed += spells[spell_name]["cost"]
         if spell_name in ["magic_misile", "drain"]:
@@ -67,19 +74,42 @@ def define_spells(lines):
         spells[spell_name] = dict(zip(parameters, numbers))
     return spells
 
+def to_the_arms(game_start):
+    game_queue = deque([game_start])
+    result = 9999
+
+    while game_queue:
+        current_state = game_queue.popleft()
+        possible_spells = set(spells.keys()) - set(current_state.active_effects)
+        for spell_name in list(possible_spells):
+            if spells[spell_name]["cost"] > current_state.mage_MP:
+                possible_spells.discard(spell_name)
+        if current_state.MP_consumed > result:
+            possible_spells = []
+        for spell_name in possible_spells:
+            new_state = deepcopy(current_state)  # create new game state
+            new_state.mage_turn(spell_name)  # mage turn inkl. casting effects
+            if new_state.boss_dead:
+                result = new_state.MP_consumed
+                print(result, new_state.spells_casted)
+                continue
+            new_state.boss_turn()  # if boss survives, may turn, casting effects at first
+            if new_state.boss_dead:
+                result = new_state.MP_consumed
+                print(result, new_state.spells_casted)
+                continue
+            elif not new_state.mage_dead:  # if mage survives, add state to queue
+                game_queue.append(new_state)
+    return result
+
 # MAIN
 with open("spells.txt") as file:
     lines = file.read().splitlines()
 
 spells = define_spells(lines)
 
-game_start = Game_state(10, 250, 14, 8, []) #mageHP, mageMP, bossHP, bossDM
+game_start = Game_state(50, 500, 51, 9) #mageHP, mageMP, bossHP, bossDMG
 
-#spells_queue = "poison,magic_misile".split(",")
-spells_queue = "recharge,shield,drain,poison,magic_misile".split(",")
-
-for spell_casted in spells_queue:
-    game_start.mage_turn(spell_casted)
-    game_start.boss_turn()
-
-print(game_start)
+result = to_the_arms(game_start)
+print(result)
+print(datetime.now() - time_start)
