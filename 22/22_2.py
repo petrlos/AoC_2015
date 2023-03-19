@@ -5,7 +5,6 @@ from collections import deque
 from datetime import datetime
 time_start = datetime.now()
 
-
 class Game_state:
     def __init__(self, mage_HP, mage_MP, boss_HP, boss_DMG):
         self.mage_HP = mage_HP
@@ -31,7 +30,8 @@ class Game_state:
     def mage_dead(self):
         if self.mage_HP <= 0:
             self.mage_HP = -100
-        return (self.mage_HP <= 0) or (self.mage_MP < 53)
+            self.mage_MP = -100
+        return self.mage_HP <= 0
 
     @property
     def shield_bonus(self): # if shield on
@@ -47,7 +47,6 @@ class Game_state:
             self.active_effects.remove(effect)
 
     def mage_turn(self, spell_name):
-        self.cast_effects()
         self.spells_casted.append("{0} {1}".format(spell_name,spells[spell_name]["cost"]))
         self.mage_MP -= spells[spell_name]["cost"]
         self.MP_consumed += spells[spell_name]["cost"]
@@ -74,33 +73,34 @@ def define_spells(lines):
         spells[spell_name] = dict(zip(parameters, numbers))
     return spells
 
-def to_the_arms(game_start):
+def to_the_arms(game_start, hard_mode = False):
     game_queue = deque([game_start])
-    result = 9999
+    result = [9999]
 
     while game_queue:
         current_state = game_queue.popleft()
-        possible_spells = set(spells.keys()) - set(current_state.active_effects)
-        for spell_name in list(possible_spells):
-            if spells[spell_name]["cost"] > current_state.mage_MP:
-                possible_spells.discard(spell_name)
-        if current_state.MP_consumed > result:
-            possible_spells = []
-        for spell_name in possible_spells:
+        for spell_name in spells.keys():
             new_state = deepcopy(current_state)  # create new game state
-            new_state.mage_turn(spell_name)  # mage turn inkl. casting effects
+            if hard_mode:
+                new_state.mage_HP -= 1
+            new_state.cast_effects()
+            if spells[spell_name]["cost"] > new_state.mage_MP or \
+                    spell_name in new_state.active_effects or \
+                    new_state.mage_dead:
+                continue #not enough MP, spell active or mage dead: not correct spell
+            new_state.mage_turn(spell_name)
             if new_state.boss_dead:
-                result = new_state.MP_consumed
-                print(result, new_state.spells_casted)
+                result.append(new_state.MP_consumed)
                 continue
             new_state.boss_turn()  # if boss survives, may turn, casting effects at first
-            if new_state.boss_dead:
-                result = new_state.MP_consumed
-                print(result, new_state.spells_casted)
+            if new_state.boss_dead and not new_state.mage_dead:
+                result.append(new_state.MP_consumed)
                 continue
             elif not new_state.mage_dead:  # if mage survives, add state to queue
                 game_queue.append(new_state)
-    return result
+        if len(result) > 10: #tested empirically, enough results
+            game_queue = []
+    return min(result)
 
 # MAIN
 with open("spells.txt") as file:
@@ -109,7 +109,11 @@ with open("spells.txt") as file:
 spells = define_spells(lines)
 
 game_start = Game_state(50, 500, 51, 9) #mageHP, mageMP, bossHP, bossDMG
+#Task1
+task1 = to_the_arms(game_start)
+print("Task 1:", task1)
 
-result = to_the_arms(game_start)
-print(result)
+#Task2
+task2 = to_the_arms(game_start, hard_mode=True)
+print("Task 2:", task2)
 print(datetime.now() - time_start)
